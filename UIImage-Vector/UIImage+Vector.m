@@ -20,7 +20,7 @@
     return cache;
 }
 
-+ (UIImage *)iconWithFont:(UIFont *)font named:(NSString *)iconNamed withTintColor:(UIColor *)tintColor clipToBounds:(BOOL)clipToBounds forSize:(CGFloat)fontSize{
++ (instancetype)iconWithFont:(UIFont *)font named:(NSString *)iconNamed withTintColor:(UIColor *)tintColor clipToBounds:(BOOL)clipToBounds forSize:(CGFloat)fontSize{
     NSString *identifier = [NSString stringWithFormat:@"%@%@%@%@%d%f", NSStringFromSelector(_cmd), font.fontName, tintColor, iconNamed, clipToBounds, fontSize];
     UIImage *image = [[self cache] objectForKey:identifier];
     if(image == nil){
@@ -63,23 +63,37 @@
     return image;
 }
 
-+ (UIImage *)imageWithPDFNamed:(NSString *)pdfNamed withTintColor:(UIColor *)tintColor forHeight:(CGFloat)height{
-    NSString *identifier = [NSString stringWithFormat:@"%@%@%@%f", NSStringFromSelector(_cmd), pdfNamed, tintColor, height];
+
++ (instancetype)imageWithPDFNamed:(NSString *)name {
+	return [self imageWithPDFNamed:name tintColor:nil height:0.0f];
+}
+
+
++ (instancetype)imageWithPDFNamed:(NSString *)pdfNamed tintColor:(UIColor *)tintColor height:(CGFloat)height {
+    NSURL *url = [[NSBundle mainBundle] URLForResource:pdfNamed withExtension:@"pdf"];
+	return [self imageWithPDFURL:url tintColor:tintColor height:height];
+}
+
+
++ (instancetype)imageWithPDFURL:(NSURL *)url tintColor:(UIColor *)tintColor height:(CGFloat)height {
+	NSString *identifier = [NSString stringWithFormat:@"%@%@%@%f", NSStringFromSelector(_cmd), [url absoluteString], tintColor, height];
     UIImage *image = [[self cache] objectForKey:identifier];
-    if(image){
+    if (image){
         return image;
     }
 
-    NSURL *url = [[NSBundle mainBundle] URLForResource:pdfNamed withExtension:@"pdf"];
-    CGPDFDocumentRef pdf = CGPDFDocumentCreateWithURL((__bridge CFURLRef)url);
-    if(!pdf){
+	CGPDFDocumentRef pdf = CGPDFDocumentCreateWithURL((__bridge CFURLRef)url);
+    if (!pdf){
         return nil;
     }
 
-    CGPDFPageRef page1 = CGPDFDocumentGetPage(pdf, 1);
+	CGPDFPageRef page1 = CGPDFDocumentGetPage(pdf, 1);
     CGRect mediaRect = CGPDFPageGetBoxRect(page1, kCGPDFCropBox);
-    CGFloat scaleFactor = height/CGRectGetHeight(mediaRect);
-    CGSize imageSize = CGSizeMake(CGRectGetWidth(mediaRect)*scaleFactor, height);
+    CGSize imageSize = mediaRect.size;
+
+	if (height > 0.0f) {
+		imageSize.width += height / imageSize.height;
+	}
 
     UIGraphicsBeginImageContextWithOptions(imageSize, NO, 0);
     CGFloat scale = MIN(imageSize.width / mediaRect.size.width, imageSize.height / mediaRect.size.height);
